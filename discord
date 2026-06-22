@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord Launcher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b0c11;--surface:#14151d;--card:#1c1e2a;--card-hover:#232535;
+    --blurple:#5865F2;--blurple-dim:#4752c4;--blurple-glow:rgba(88,101,242,.35);
+    --green:#3ba55d;--red:#ed4245;--yellow:#faa61a;
+    --text:#e3e5e8;--muted:#72767d;--border:rgba(255,255,255,.06);
+  }
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:10px;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:9px}
+  .logo svg{width:26px;height:26px;flex-shrink:0}
+  .logo-text{font-size:14px;font-weight:700;letter-spacing:-.3px;color:#fff}
+  .logo-sub{font-size:10px;color:var(--muted);font-weight:500;margin-top:1px}
+  .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .count-badge{font-size:11px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:20px;padding:3px 9px}
+  .count-badge span{color:var(--text)}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,box-shadow .15s,transform .1s}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-blurple{background:var(--blurple);color:#fff}
+  .btn-blurple:hover:not(:disabled){background:var(--blurple-dim);box-shadow:0 0 12px var(--blurple-glow)}
+  .btn-ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+  .btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.1)}
+  .btn-green{background:#2d7d46;color:#fff}
+  .btn-green:hover:not(:disabled){background:#256639}
+
+  /* restore banner */
+  #restore-banner{display:none;background:rgba(59,165,93,.08);border-bottom:1px solid rgba(59,165,93,.18);padding:9px 20px;flex-shrink:0;align-items:center;gap:12px;flex-wrap:wrap}
+  #restore-banner.show{display:flex}
+  .restore-msg{font-size:12px;color:#5dbf7f;flex:1}
+  .restore-msg strong{color:#3ba55d}
+
+  /* info banner */
+  .info-banner{background:rgba(250,166,26,.07);border-bottom:1px solid rgba(250,166,26,.14);padding:7px 20px;display:flex;align-items:flex-start;gap:9px;flex-shrink:0;font-size:11.5px;color:#c8a04a;line-height:1.5}
+  .info-banner svg{flex-shrink:0;margin-top:1px}
+  .info-banner strong{color:#faa61a}
+  .session-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+  .slot-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;border:1px solid}
+  .slot-chip.native{background:rgba(88,101,242,.12);border-color:rgba(88,101,242,.3);color:#8890f8}
+  .slot-chip.ptb{background:rgba(59,165,93,.12);border-color:rgba(59,165,93,.3);color:#5dbf7f}
+  .slot-chip.canary{background:rgba(250,166,26,.12);border-color:rgba(250,166,26,.3);color:#faa61a}
+  .slot-chip.profile{background:rgba(237,66,69,.1);border-color:rgba(237,66,69,.25);color:#f07a7c}
+
+  /* grid */
+  main{flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px;align-content:start}
+  main::-webkit-scrollbar{width:5px}
+  main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+
+  /* card */
+  .account-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px 15px 15px;display:flex;flex-direction:column;align-items:center;gap:11px;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s;position:relative;user-select:none}
+  .account-card:hover{background:var(--card-hover);border-color:rgba(88,101,242,.5);box-shadow:0 4px 20px rgba(0,0,0,.4);transform:translateY(-2px)}
+  .account-card.open{border-color:rgba(88,101,242,.6);box-shadow:0 0 0 1px rgba(88,101,242,.3),0 0 18px var(--blurple-glow)}
+  .live-dot{position:absolute;top:9px;right:9px;width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 5px rgba(59,165,93,.8);display:none}
+  .account-card.open .live-dot{display:block}
+  .session-badge{position:absolute;top:9px;left:9px;font-size:9px;font-weight:700;letter-spacing:.4px;padding:2px 5px;border-radius:4px;text-transform:uppercase}
+  .badge-native{background:rgba(88,101,242,.2);color:#8890f8;border:1px solid rgba(88,101,242,.35)}
+  .badge-ptb{background:rgba(59,165,93,.2);color:#5dbf7f;border:1px solid rgba(59,165,93,.35)}
+  .badge-canary{background:rgba(250,166,26,.2);color:#faa61a;border:1px solid rgba(250,166,26,.35)}
+  .badge-profile{background:rgba(237,66,69,.15);color:#f07a7c;border:1px solid rgba(237,66,69,.3)}
+  .avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;position:relative;transition:transform .2s}
+  .account-card:hover .avatar{transform:scale(1.06)}
+  .avatar-ring{position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;transition:border-color .2s}
+  .account-card:hover .avatar-ring,.account-card.open .avatar-ring{border-color:var(--blurple)}
+  .card-name{font-size:13px;font-weight:600;text-align:center;color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+  .card-url{font-size:10px;font-weight:500;color:var(--muted);margin-top:-5px;text-align:center}
+  .card-status{font-size:11px;font-weight:500;color:var(--muted)}
+  .card-status.live{color:var(--green)}
+  .card-actions{display:flex;gap:5px;width:100%;margin-top:1px}
+  .btn-open{flex:1;background:var(--blurple);color:#fff;border:none;border-radius:6px;padding:6px 0;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .12s}
+  .btn-open:hover{background:var(--blurple-dim)}
+  .btn-delete{background:rgba(237,66,69,.12);color:var(--red);border:1px solid rgba(237,66,69,.2);border-radius:6px;padding:6px 9px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .12s}
+  .btn-delete:hover{background:rgba(237,66,69,.25)}
+
+  /* empty */
+  #empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:50px 20px;text-align:center;color:var(--muted)}
+  #empty svg{opacity:.2}
+  #empty h2{font-size:17px;font-weight:600;color:var(--text);margin-top:4px}
+  #empty p{font-size:12px;line-height:1.6;max-width:280px}
+
+  /* modal */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center}
+  .overlay.active{display:flex}
+  .modal{background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:15px;padding:26px 26px 22px;width:350px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:pop .18s ease}
+  @keyframes pop{from{transform:scale(.92) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+  .modal h3{font-size:15px;font-weight:700;margin-bottom:4px}
+  .modal>.sub{font-size:11.5px;color:var(--muted);margin-bottom:16px}
+  .modal label,.field-label{display:block;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px}
+  .modal input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:9px 13px;font-size:13px;font-family:inherit;color:var(--text);outline:none;transition:border-color .15s;margin-bottom:14px}
+  .modal input:focus{border-color:var(--blurple)}
+  .modal input::placeholder{color:var(--muted)}
+  .slot-options{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+  .slot-option{display:flex;align-items:flex-start;gap:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:9px 11px;cursor:pointer;transition:background .12s,border-color .12s}
+  .slot-option:hover{background:rgba(255,255,255,.06)}
+  .slot-option.selected{border-color:var(--blurple);background:rgba(88,101,242,.1)}
+  .slot-option.disabled{opacity:.38;cursor:not-allowed;pointer-events:none}
+  .slot-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--muted);margin-top:2px;flex-shrink:0;transition:background .12s,border-color .12s}
+  .slot-option.selected .slot-dot{background:var(--blurple);border-color:var(--blurple)}
+  .slot-info-name{font-size:12.5px;font-weight:600;color:var(--text)}
+  .slot-info-url{font-size:10.5px;color:var(--muted);margin-top:1px}
+  .slot-taken{font-size:9.5px;font-weight:600;color:var(--red);background:rgba(237,66,69,.1);border-radius:4px;padding:1px 5px;margin-left:4px}
+  .profile-howto{background:rgba(237,66,69,.07);border:1px solid rgba(237,66,69,.18);border-radius:7px;padding:9px 11px;margin-bottom:14px;font-size:11px;color:#c08080;line-height:1.6;display:none}
+  .profile-howto strong{color:#f07a7c}
+  .modal-btns{display:flex;gap:7px;justify-content:flex-end}
+  .btn-cancel{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .12s,color .12s}
+  .btn-cancel:hover{background:rgba(255,255,255,.05);color:var(--text)}
+  .btn-confirm{background:var(--blurple);border:none;color:#fff;border-radius:7px;padding:8px 18px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .12s}
+  .btn-confirm:hover{background:var(--blurple-dim)}
+
+  /* save-tip modal */
+  #save-tip .modal{width:420px}
+  #save-tip pre{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:10px 13px;font-size:11.5px;color:#a0c4ff;margin:10px 0 16px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;font-family:monospace}
+  #save-tip ol{padding-left:18px;font-size:12px;color:var(--muted);line-height:2}
+  #save-tip ol strong{color:var(--text)}
+  #save-tip .step-block{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px}
+  #save-tip .step-block h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px}
+  .copy-btn{font-size:10px;font-weight:600;background:rgba(88,101,242,.2);color:#8890f8;border:1px solid rgba(88,101,242,.3);border-radius:5px;padding:2px 8px;cursor:pointer;margin-left:8px;font-family:inherit;transition:background .12s}
+  .copy-btn:hover{background:rgba(88,101,242,.35)}
+
+  /* toast */
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);color:var(--text);font-size:12.5px;font-weight:500;padding:9px 16px;border-radius:9px;box-shadow:0 8px 20px rgba(0,0,0,.5);z-index:200;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 127.14 96.36" fill="none"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z" fill="#5865F2"/></svg>
+    <div>
+      <div class="logo-text">Discord Launcher</div>
+      <div class="logo-sub">Multi-account · sessions persist</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="count-badge"><span id="count">0</span> / 15</div>
+    <button class="btn btn-ghost" id="save-tip-btn" title="How to make logins permanent">
+      💾 Fix Logins
+    </button>
+    <button class="btn btn-ghost" id="restore-all-btn" title="Re-open all Discord windows">
+      ↗ Restore All
+    </button>
+    <button class="btn btn-blurple" id="add-btn">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Add Account
+    </button>
+  </div>
+</header>
+
+<div id="restore-banner">
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#3ba55d" stroke-width="1.5"/><path d="M6 10l3 3 5-5" stroke="#3ba55d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="restore-msg" id="restore-msg"></div>
+  <button class="btn btn-green" id="restore-banner-btn">↗ Re-open All Now</button>
+  <button class="btn btn-ghost" id="restore-dismiss" style="padding:6px 10px">✕</button>
+</div>
+
+<div class="info-banner">
+  <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#faa61a" stroke-width="1.5"/><path d="M10 9v5M10 6.5v.5" stroke="#faa61a" stroke-width="1.8" stroke-linecap="round"/></svg>
+  <div>
+    <strong>Separate sessions:</strong> each Discord domain has its own isolated login.
+    &nbsp;Click <strong>💾 Fix Logins</strong> above to make your logins survive restarts permanently.
+    <div class="session-legend" style="margin-top:5px">
+      <span class="slot-chip native">Slot 1 · discord.com</span>
+      <span class="slot-chip ptb">Slot 2 · ptb.discord.com</span>
+      <span class="slot-chip canary">Slot 3 · canary.discord.com</span>
+      <span class="slot-chip profile">Slots 4–15 · Browser Profile</span>
+    </div>
+  </div>
+</div>
+
+<main id="grid">
+  <div id="empty">
+    <svg width="60" height="60" viewBox="0 0 127.14 96.36" fill="none"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z" fill="#5865F2"/></svg>
+    <h2>No accounts yet</h2>
+    <p>Click <strong>Add Account</strong> to create your first Discord slot. Your account list is saved automatically.</p>
+  </div>
+</main>
+
+<!-- Add modal -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Add Account</h3>
+    <p class="sub">Give this slot a nickname and pick its isolated session.</p>
+    <label for="name-input">Nickname</label>
+    <input id="name-input" type="text" placeholder="e.g. Main, Alt, Work…" maxlength="24" autocomplete="off"/>
+    <span class="field-label">Session type</span>
+    <div class="slot-options" id="slot-options"></div>
+    <div class="profile-howto" id="profile-howto">
+      <strong>Browser profile = isolated login:</strong><br>
+      1. Chrome/Edge: click your avatar top-right → <em>Add</em> → new profile.<br>
+      2. Open Discord in that profile window.<br>
+      3. Log in — fully separate from every other account.
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm">Add &amp; Open</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save tip modal -->
+<div class="overlay" id="save-tip">
+  <div class="modal">
+    <h3>💾 Make Logins Permanent</h3>
+    <p class="sub" style="margin-bottom:14px">Your account list is already saved in your browser. The logins vanish because Discord's cookies only survive if you keep the launcher at a <strong style="color:var(--text)">fixed URL</strong>. Pick one option below:</p>
+
+    <div class="step-block">
+      <h4>Option A — Bookmark this file <span style="background:rgba(59,165,93,.15);color:#5dbf7f;font-size:9px;padding:2px 6px;border-radius:4px;margin-left:4px">Easiest</span></h4>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.6">
+        Save this HTML file somewhere permanent (e.g. Desktop).
+        <strong style="color:var(--text)">Bookmark it</strong> in your browser — don't move or rename the file.
+        Open via the bookmark every time so the file path never changes.
+        Your account list and Discord cookies will persist.
+      </p>
+    </div>
+
+    <div class="step-block">
+      <h4>Option B — Serve it locally <span style="background:rgba(88,101,242,.15);color:#8890f8;font-size:9px;padding:2px 6px;border-radius:4px;margin-left:4px">Best</span></h4>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:8px">
+        Run a tiny local server so the URL is always <code style="color:#a0c4ff">http://localhost:8080</code>.
+        Open <strong style="color:var(--text)">Terminal / Command Prompt</strong> in the folder with this file and run:
+      </p>
+      <div style="position:relative">
+        <pre id="cmd-python">python3 -m http.server 8080</pre>
+        <button class="copy-btn" onclick="copyCmd('python')">Copy</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">Or if you have Node: &nbsp;<code style="color:#a0c4ff">npx serve . -p 8080</code></p>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Then open <strong style="color:var(--text)">http://localhost:8080/discord-launcher.html</strong> and bookmark that. Keep the terminal running in the background.</p>
+    </div>
+
+    <div class="step-block">
+      <h4>Why logins stay after this</h4>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.6">
+        Discord stores your login in a <strong style="color:var(--text)">browser cookie</strong> on discord.com / ptb.discord.com / canary.discord.com. Those cookies last weeks and survive restarts — as long as you don't clear browser data. Your account nicknames are in <code style="color:#a0c4ff">localStorage</code> tied to this file's URL, so a fixed URL = permanent saves.
+      </p>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-confirm" id="save-tip-close">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SLOTS=[
+  {key:'native',label:'Slot 1 — Stable',url:'https://discord.com/app',desc:'discord.com',badge:'badge-native'},
+  {key:'ptb',label:'Slot 2 — PTB',url:'https://ptb.discord.com/app',desc:'ptb.discord.com',badge:'badge-ptb'},
+  {key:'canary',label:'Slot 3 — Canary',url:'https://canary.discord.com/app',desc:'canary.discord.com',badge:'badge-canary'},
+  {key:'profile',label:'Slots 4–15 — Browser Profile',url:null,desc:'Separate browser profile required',badge:'badge-profile'},
+];
+const COLORS=[
+  ['#5865F2','#4752c4'],['#3ba55d','#2d7d46'],['#eb459e','#c03884'],
+  ['#faa61a','#d4880a'],['#9b59b6','#7d3f9a'],['#1abc9c','#148f77'],
+  ['#e67e22','#ca6f1e'],['#3498db','#2475a8'],['#e74c3c','#c0392b'],
+  ['#2ecc71','#27ae60'],['#f39c12','#d68910'],['#8e44ad','#6c3483'],
+  ['#16a085','#0d6b5e'],['#d35400','#a84300'],['#c0392b','#922b21'],
+];
+
+const STORE_KEY='dc-launcher-v3';
+
+function loadAccounts(){
+  try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]')}catch{return[]}
+}
+function saveAccounts(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(accounts))}catch(e){showToast('Storage error: '+e.message)}
+}
+
+let accounts=loadAccounts();
+let openWindows={};
+let selectedSlot=null;
+
+const grid=document.getElementById('grid');
+const empty=document.getElementById('empty');
+const addBtn=document.getElementById('add-btn');
+const overlay=document.getElementById('modal-overlay');
+const nameInput=document.getElementById('name-input');
+const slotOptions=document.getElementById('slot-options');
+const profileHowto=document.getElementById('profile-howto');
+const confirmBtn=document.getElementById('modal-confirm');
+const countEl=document.getElementById('count');
+const toast=document.getElementById('toast');
+const restoreBanner=document.getElementById('restore-banner');
+const restoreMsg=document.getElementById('restore-msg');
+
+let toastT;
+function showToast(m){toast.textContent=m;toast.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>toast.classList.remove('show'),3000)}
+
+function initials(n){return n.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?'}
+function isOpen(id){const w=openWindows[id];return w&&!w.closed}
+function usedSlotKeys(){return new Set(accounts.filter(a=>a.slotKey!=='profile').map(a=>a.slotKey))}
+function slotFor(key){return SLOTS.find(s=>s.key===key)}
+
+function launchDiscord(acc,silent=false){
+  if(acc.slotKey==='profile'){
+    showToast('Open a browser profile manually → go to discord.com');
+    window.open('data:text/html,<html><body style="font-family:sans-serif;background:%23111;color:%23eee;padding:30px;max-width:500px"><h2 style="color:%235865F2">Browser Profile: '+encodeURIComponent(acc.name)+'</h2><ol style="line-height:2.2"><li>Click your <b>profile avatar</b> (Chrome/Edge top-right)</li><li>Click <b>Add</b> → create new profile → name it <em>'+encodeURIComponent(acc.name)+'</em></li><li>In new profile window → go to <b>discord.com</b></li><li>Log in — fully isolated session</li></ol></body></html>','dc_guide_'+acc.id);
+    return;
+  }
+  const slot=slotFor(acc.slotKey);
+  if(!slot)return;
+  const existing=openWindows[acc.id];
+  if(existing&&!existing.closed){
+    existing.focus();
+    if(!silent)showToast('Focused "'+acc.name+'"');
+  }else{
+    const w=window.open(slot.url,'dc_'+acc.id,'width=1280,height=820,menubar=no,toolbar=no,location=yes,scrollbars=yes,resizable=yes');
+    openWindows[acc.id]=w;
+    if(!w){showToast('Popup blocked — allow popups for this page')}
+    else if(!silent){showToast('Opened "'+acc.name+'" → '+slot.desc)}
+  }
+  renderCards();
+}
+
+function deleteAccount(id){
+  accounts=accounts.filter(a=>a.id!==id);
+  delete openWindows[id];
+  saveAccounts();
+  renderCards();
+}
+
+function restoreAll(){
+  const restorable=accounts.filter(a=>a.slotKey!=='profile');
+  if(restorable.length===0){showToast('No auto-restorable accounts (profile slots need manual open)');return}
+  let count=0;
+  restorable.forEach((acc,i)=>{setTimeout(()=>{launchDiscord(acc,true);count++;if(count===restorable.length)showToast('Restored '+count+' Discord window'+(count>1?'s':''))},i*300)});
+  restoreBanner.classList.remove('show');
+}
+
+function renderCards(){
+  Array.from(grid.querySelectorAll('.account-card')).forEach(c=>c.remove());
+  countEl.textContent=accounts.length;
+  addBtn.disabled=accounts.length>=15;
+  empty.style.display=accounts.length===0?'flex':'none';
+
+  accounts.forEach((acc,idx)=>{
+    const [bg,bg2]=COLORS[idx%COLORS.length];
+    const open=isOpen(acc.id);
+    const slot=slotFor(acc.slotKey);
+    const card=document.createElement('div');
+    card.className='account-card'+(open?' open':'');
+    card.innerHTML=`
+      <div class="live-dot"></div>
+      <div class="session-badge ${slot?.badge||'badge-profile'}">${
+        acc.slotKey==='native'?'Stable':acc.slotKey==='ptb'?'PTB':acc.slotKey==='canary'?'Canary':'Profile'
+      }</div>
+      <div class="avatar" style="background:linear-gradient(135deg,${bg},${bg2})">
+        <div class="avatar-ring"></div>${initials(acc.name)}
+      </div>
+      <div class="card-name" title="${acc.name}">${acc.name}</div>
+      <div class="card-url">${slot?.desc||''}</div>
+      <div class="card-status${open?' live':''}">${open?'● Live':'○ Closed'}</div>
+      <div class="card-actions">
+        <button class="btn-open">${acc.slotKey==='profile'?'Steps':open?'Focus':'Open'}</button>
+        <button class="btn-delete" title="Remove">✕</button>
+      </div>`;
+    card.querySelector('.btn-open').addEventListener('click',e=>{e.stopPropagation();launchDiscord(acc)});
+    card.querySelector('.btn-delete').addEventListener('click',e=>{e.stopPropagation();deleteAccount(acc.id)});
+    card.addEventListener('click',()=>launchDiscord(acc));
+    grid.appendChild(card);
+  });
+}
+
+setInterval(renderCards,1500);
+
+// Restore banner on load
+window.addEventListener('load',()=>{
+  if(accounts.length>0){
+    const auto=accounts.filter(a=>a.slotKey!=='profile');
+    if(auto.length>0){
+      restoreMsg.innerHTML=`<strong>${accounts.length} account${accounts.length>1?'s':''} saved.</strong> Click to re-open your Discord windows — your logins are still active in the browser.`;
+      restoreBanner.classList.add('show');
+    }
+  }
+});
+
+document.getElementById('restore-banner-btn').addEventListener('click',restoreAll);
+document.getElementById('restore-dismiss').addEventListener('click',()=>restoreBanner.classList.remove('show'));
+document.getElementById('restore-all-btn').addEventListener('click',restoreAll);
+
+// Add modal
+function buildSlotOptions(){
+  const used=usedSlotKeys();
+  slotOptions.innerHTML='';
+  selectedSlot=null;
+  profileHowto.style.display='none';
+  SLOTS.forEach(slot=>{
+    const taken=slot.key!=='profile'&&used.has(slot.key);
+    const div=document.createElement('div');
+    div.className='slot-option'+(taken?' disabled':'');
+    div.dataset.key=slot.key;
+    div.innerHTML=`<div class="slot-dot"></div><div><div class="slot-info-name">${slot.label}${taken?'<span class="slot-taken">In use</span>':''}</div><div class="slot-info-url">${slot.desc}</div></div>`;
+    if(!taken){
+      div.addEventListener('click',()=>{
+        document.querySelectorAll('.slot-option').forEach(o=>o.classList.remove('selected'));
+        div.classList.add('selected');
+        selectedSlot=slot.key;
+        profileHowto.style.display=slot.key==='profile'?'block':'none';
+        confirmBtn.textContent=slot.key==='profile'?'Add & Show Steps':'Add & Open';
+      });
+      if(!selectedSlot){div.classList.add('selected');selectedSlot=slot.key;confirmBtn.textContent=slot.key==='profile'?'Add & Show Steps':'Add & Open'}
+    }
+    slotOptions.appendChild(div);
+  });
+}
+
+addBtn.addEventListener('click',()=>{if(accounts.length>=15)return;nameInput.value='';buildSlotOptions();overlay.classList.add('active');setTimeout(()=>nameInput.focus(),60)});
+document.getElementById('modal-cancel').addEventListener('click',()=>overlay.classList.remove('active'));
+overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('active')});
+
+function confirmAdd(){
+  const name=nameInput.value.trim();
+  if(!name){nameInput.focus();return}
+  if(!selectedSlot){showToast('Pick a session type');return}
+  if(accounts.length>=15){overlay.classList.remove('active');return}
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  accounts.push({id,name,slotKey:selectedSlot});
+  saveAccounts();
+  overlay.classList.remove('active');
+  renderCards();
+  setTimeout(()=>{const acc=accounts.find(a=>a.id===id);if(acc)launchDiscord(acc)},80);
+}
+confirmBtn.addEventListener('click',confirmAdd);
+nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')confirmAdd();if(e.key==='Escape')overlay.classList.remove('active')});
+
+// Save tip modal
+const saveTip=document.getElementById('save-tip');
+document.getElementById('save-tip-btn').addEventListener('click',()=>saveTip.classList.add('active'));
+document.getElementById('save-tip-close').addEventListener('click',()=>saveTip.classList.remove('active'));
+saveTip.addEventListener('click',e=>{if(e.target===saveTip)saveTip.classList.remove('active')});
+
+window.copyCmd=function(type){
+  const text=type==='python'?'python3 -m http.server 8080':'npx serve . -p 8080';
+  navigator.clipboard.writeText(text).then(()=>showToast('Copied!'));
+};
+
+renderCards();
+</script>
+</body>
+</html>
